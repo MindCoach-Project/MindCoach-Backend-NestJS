@@ -1,0 +1,35 @@
+services:
+  mindcoach_cloudbeaver_server_d:
+    image: dbeaver/cloudbeaver
+    container_name: mindcoach_cloudbeaver_server_d
+    ports:
+      - "8978:8978"
+    volumes:
+      - cloudbeaver_data_d:/opt/cloudbeaver/workspace
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+  mindcoach_mysql_server_d:
+    image: mysql:8.0
+    container_name: mindcoach_mysql_server_d
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlroot
+      MYSQL_USER: mixcre
+      MYSQL_PASSWORD: Mixcre123
+      MYSQL_DATABASE: MindCoachDB
+    ports:
+      - "3306:3306"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    volumes:
+      - mysql_data_d:/var/lib/mysql
+
+volumes:
+  cloudbeaver_data_d:
+  mysql_data_d:

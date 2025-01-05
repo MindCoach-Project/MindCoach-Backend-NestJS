@@ -1,0 +1,107 @@
+services:
+  mindcoach_dotnet_service:
+    image: mixcre/mindcoach_dotnet
+    # build:
+    #   context: ../be/dotnet
+    #   dockerfile: Dockerfile
+    container_name: mindcoach_dotnet_service
+    ports:
+      - "6001:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '9.5'
+          memory: 512M
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    networks:
+      - backend_network
+      - db_network
+    depends_on:
+      - mindcoach_mysql_server_s
+
+  mindcoach_nestjs_service:
+    image: mixcre/mindcoach_nestjs
+    # build:
+    #   context: ../be/nestjs
+    #   dockerfile: Dockerfile
+    container_name: mindcoach_nestjs_service
+    ports:
+      - "6002:6002"
+    env_file:
+      - ../be/nestjs/.env.sta
+    environment:
+    - NODE_ENV=sta
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    networks:
+      - backend_network
+      - db_network
+    depends_on:
+      - mindcoach_mysql_server_s
+      
+  mindcoach_fe:
+    image: mixcre/mindcoach_fe
+    # build:
+    #   context: ../fe
+    #   dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    container_name: mindcoach_fe 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    networks:
+      - frontend_network
+
+  mindcoach_cloudbeaver_server:
+    image: dbeaver/cloudbeaver
+    container_name: mindcoach_cloudbeaver_server
+    ports:
+      - "8978:8978"
+    volumes:
+      - cloudbeaver_data_s:/opt/cloudbeaver/workspace
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "1"
+    networks:
+      - db_network
+
+  mindcoach_mysql_server_s:
+    image: mysql:8.0
+    container_name: mindcoach_mysql_server_s
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlroot
+      MYSQL_USER: mixcre
+      MYSQL_PASSWORD: Mixcre123
+      MYSQL_DATABASE: MindCoachDB
+    volumes:
+      - mysql_data_s:/var/lib/mysql
+    networks:
+      - db_network
+
+volumes:
+  cloudbeaver_data_s:
+  mysql_data_s:
+
+networks:
+  backend_network:
+  frontend_network:
+  db_network:

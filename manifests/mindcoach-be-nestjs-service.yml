@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mindcoach
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mindcoach-nestjs-service-env-production
+  namespace: mindcoach
+type: Opaque
+stringData:
+  Port: "7002"
+  E: Production
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mindcoach-nestjs-service
+  name: mindcoach-nestjs-service-deployment
+  namespace: mindcoach
+spec:
+  selector:
+    matchLabels:
+      app: mindcoach-nestjs-service
+  template:
+    metadata:
+      labels:
+        app: mindcoach-nestjs-service
+    spec:
+      containers:
+      - name: mindcoach-nestjs-service
+        image: mixcre/mindcoach_nestjs
+        imagePullPolicy: Always
+        envFrom:
+          - secretRef:
+              name: mindcoach-nestjs-service-env-production
+              optional: false
+        env:
+        - name: NODE_ENV
+          value: prod
+        ports:
+        - containerPort: 7002
+          name: tcp
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 1.5
+            memory: 2048Mi
+          requests:
+            cpu: 0.75
+            memory: 1024Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mindcoach-nestjs-service-service
+  namespace: mindcoach
+spec:
+  type: ClusterIP
+  selector:
+    app: mindcoach-nestjs-service
+  ports:
+    - protocol: TCP
+      port: 7002
+      targetPort: 7002
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mindcoach-nestjs-service-ingress
+  namespace: mindcoach
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mindcoach-nestjs.service
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: mindcoach-nestjs-service-service
+                port:
+                  number: 7002
+            path: /

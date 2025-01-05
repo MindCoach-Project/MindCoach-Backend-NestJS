@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mindcoach
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hostpath-pvc-retain-mindcoach-db
+  namespace: mindcoach
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: hostpath-retain
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mindcoach-db-mysql-custom-configmap
+  namespace: mindcoach
+data:
+  mysql-custom.cnf: |
+    [mysqld]
+    bind-address = 0.0.0.0
+    skip-networking = 0
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mindcoach-db-statefulset
+  namespace: mindcoach
+spec:
+  serviceName: mindcoach-db-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mindcoach-db
+  template:
+    metadata:
+      labels:
+        app: mindcoach-db
+    spec:
+      securityContext:
+        fsGroup: 65534
+      containers:
+      - name: mindcoach-db
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: mysqlroot
+        - name: MYSQL_USER
+          value: mixcre
+        - name: MYSQL_PASSWORD
+          value: Mixcre123
+        - name: MYSQL_DATABASE
+          value: MindCoachDB
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mindcoach-db-storage
+          mountPath: /var/lib/mysql
+        - name: mysql-custom-configmap
+          mountPath: /etc/mysql/conf.d/mysql-custom.cnf
+          subPath: mysql-custom.cnf
+        resources:
+          limits:
+            cpu: 1.5
+            memory: 2048Mi
+          requests:
+            cpu: 0.75
+            memory: 1024Mi
+      volumes:
+      - name: mindcoach-db-storage
+        persistentVolumeClaim:
+          claimName: hostpath-pvc-retain-mindcoach-db
+      - name: mysql-custom-configmap
+        configMap:
+          name: mindcoach-db-mysql-custom-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mindcoach-db-service
+  namespace: mindcoach
+spec:
+  selector:
+    app: mindcoach-db
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306

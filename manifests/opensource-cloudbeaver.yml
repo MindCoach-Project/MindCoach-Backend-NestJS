@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opensource
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hostpath-pvc-retain-cloudbeaver
+  namespace: opensource
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: hostpath-retain
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cloudbeaver
+  name: cloudbeaver-deployment
+  namespace: opensource
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudbeaver
+  template:
+    metadata:
+      labels:
+        app: cloudbeaver
+      namespace: opensource
+    spec:
+      containers:
+        - image: dbeaver/cloudbeaver
+          imagePullPolicy: Always
+          name: cloudbeaver
+          ports:
+            - containerPort: 8978
+              name: tcp
+              protocol: TCP
+          volumeMounts:
+            - name: cloudbeaver-volume
+              mountPath: /opt/cloudbeaver/workspace
+          resources:
+            limits:
+              cpu: 1
+              memory: 1028Mi
+            requests:
+              cpu: 0.5
+              memory: 512Mi
+      volumes:
+       - name: cloudbeaver-volume
+         persistentVolumeClaim:
+            claimName: hostpath-pvc-retain-cloudbeaver
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudbeaver-service
+  namespace: opensource
+spec:
+  type: ClusterIP
+  selector:
+    app: cloudbeaver
+  ports:
+    - protocol: TCP
+      port: 8978
+      targetPort: 8978
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloudbeaver-ingress
+  namespace: opensource
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mindcoach-cloudbeaver.opensource
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: cloudbeaver-service
+                port:
+                  number: 8978
+            path: /
